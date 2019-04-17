@@ -132,7 +132,7 @@ func (c *Crawler) crawl(id int) {
 	for {
 		select {
 		case nextLink := <-c.data:
-			fmt.Fprintf(c.printTarget, "Thread ID-%v Got Link from channel: [ID: %v], [title: %s], [link: %s], [number: %v]\n", id, nextLink.ID, nextLink.Title, nextLink.Link, nextLink.Number)
+			fmt.Fprintf(c.printTarget, "Thread ID-%v Got Link from channel: [linkID: %v], [link: '%s'],  [title: '%s'], [number: %v]\n", id, nextLink.ID, nextLink.Link, nextLink.Title, nextLink.Number)
 			c.log.WithFields(logrus.Fields{
 				"threadID":       id,
 				"nextLinkID":     nextLink.ID,
@@ -164,12 +164,16 @@ func (c *Crawler) crawl(id int) {
 
 			title, urlSuffix, err = c.parser.ParseData(res)
 			res.Body.Close()
+
 			if err != nil {
 				fmt.Fprintf(c.printTarget, "Failed parseNextVideoData, reason: %s\n", err)
+
 				c.log.WithFields(logrus.Fields{
 					"method": "parser.ParseData",
 					"err":    err.Error(),
-				}).Fatal("Failed to parseData from response")
+					"linkID": nextLink.ID,
+				}).Error("Failed to parseData from response")
+				break
 			}
 
 			c.data <- models.NextLink{ID: nextLink.ID, NOfIterations: nextLink.NOfIterations, Title: title, Link: urlSuffix, Number: nextLink.Number + 1, BaseURL: nextLink.BaseURL}
@@ -254,4 +258,6 @@ Path:"/"
 Secure:false
 sameSite:"Unset"
 
+
+/watch?v=4Q46xYqUwZQ
 */

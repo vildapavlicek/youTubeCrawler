@@ -2,6 +2,7 @@ package parsers
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"regexp"
 
@@ -30,45 +31,40 @@ func (y YoutubeParser) ParseData(res *http.Response) (title, link string, err er
 		}).Error("Failed to parse req.Body")
 		return "", "", err
 	}
-	title, link, err = parseNode(doc)
+	title, link = parseNode(doc)
 	y.Log.WithFields(logrus.Fields{
 		"method":      "ParseData",
 		"parsedTitle": title,
 		"parsedLink":  link,
 	}).Trace("Parsed values at ParseData from parseNode(doc)")
 
-	if err != nil {
-		y.Log.WithFields(logrus.Fields{
-			"method":      "ParseData",
-			"parsedTitle": title,
-			"parsedLink":  link,
-			"err":         err.Error(),
-		}).Debug("Error parsing title and link")
+	if link == "" {
+		fmt.Println("!!! FAILED LINK !!!")
+		return title, link, errors.New("From [ParseData] Failed to parse link")
 	}
-
-	return title, link, err
+	return title, link, nil
 }
 
-func parseNode(n *html.Node) (title, link string, err error) {
+func parseNode(n *html.Node) (title, link string) {
 	if n.Type == html.ElementNode && n.Data == "ul" {
 		for _, v := range n.Attr {
 			if v.Key == "class" && v.Val == "video-list" {
-				title, link, err = parseNextLink(n)
-				return title, link, err
+				title, link = parseNextLink(n)
+				return title, link
 			}
 		}
 
 	}
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
 		if title == "" || link == "" {
-			title, link, err = parseNode(c)
+			title, link = parseNode(c)
 		}
 	}
 
-	return title, link, err
+	return title, link
 }
 
-func parseNextLink(n *html.Node) (title, link string, err error) {
+func parseNextLink(n *html.Node) (title, link string) {
 
 	if n.Type == html.ElementNode && n.Data == "a" {
 		for _, v := range n.Attr {
@@ -81,22 +77,19 @@ func parseNextLink(n *html.Node) (title, link string, err error) {
 			}
 
 			if title != "" && link != "" {
-				return title, link, nil
+				return title, link
 			}
 		}
 	}
 
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
 
-		if title == "" || link == "" {
-			title, link, err = parseNextLink(c)
+		if link == "" { //title == "" ||
+			title, link = parseNextLink(c)
 		}
-	}
 
-	if title == "" || link == "" {
-		return title, link, errors.New("Failed to parse title or link")
 	}
-	return title, link, nil
+	return title, link
 
 }
 

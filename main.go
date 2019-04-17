@@ -79,7 +79,7 @@ func main() {
 }
 
 func startServer(s *http.Server) {
-	fmt.Printf("Starting server at addr: %s", s.Addr)
+	fmt.Printf("Starting server at addr: %s\n", s.Addr)
 	log.WithFields(logrus.Fields{
 		"Addr": s.Addr,
 	}).Debug("Server listening")

@@ -1,6 +1,6 @@
 "# youtubeCrawler" <br>
 <p>
-  Uses Modules for dependency management
+  Uses Modules for dependency management<br>
   Uses MySQL DB or stores data to file
 </p>
 <p>

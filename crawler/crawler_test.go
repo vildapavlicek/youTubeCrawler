@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"github.com/vildapavlicek/GoLang/youtubeCrawler/config"
 	"github.com/vildapavlicek/GoLang/youtubeCrawler/models"
 	"github.com/vildapavlicek/GoLang/youtubeCrawler/store"
@@ -39,11 +40,16 @@ func (fs fakeStore) Close() {
 
 func TestGetResponse(t *testing.T) {
 	t.Run("OK Response", func(t *testing.T) {
+		c := Crawler{log: logrus.New()}
+		c.log.Out = ioutil.Discard
 		status := http.StatusOK
 		want := http.StatusOK
 		server := makeHTTPServer(status)
 		defer server.Close()
-		got := getResponse("GET", server.URL, "", myClient)
+		got, err := c.getResponse("GET", server.URL, "", myClient)
+		if err != nil {
+			t.Fatalf("failed to retrieve response, err: %s", err)
+		}
 		defer got.Body.Close()
 		assertStatusEquals(t, want, got.StatusCode)
 	})
@@ -82,10 +88,13 @@ func TestCrawl(t *testing.T) {
 			stopSignal:   make(chan bool),
 			StoreManager: testStoreManager,
 			printTarget:  ioutil.Discard,
+			log:          logrus.New(),
 		}
+		crawler.log.Out = ioutil.Discard
+
 		crawler.Add(firstLink)
 		crawler.wg.Add(1)
-		go crawler.crawl(1, crawler.parser)
+		go crawler.crawl(1)
 		go crawler.StoreManager.StoreData()
 		time.Sleep(3 * time.Second)
 		crawler.Stop()
@@ -128,11 +137,16 @@ func TestCrawl(t *testing.T) {
 			stopSignal:   make(chan bool),
 			StoreManager: testStoreManager,
 			printTarget:  ioutil.Discard,
+			log:          logrus.New(),
 		}
+		crawler.log.Out = ioutil.Discard
+
 		crawler.Add(firstLink)
 		crawler.wg.Add(1)
-		go crawler.crawl(1, crawler.parser)
+
+		go crawler.crawl(1)
 		go crawler.StoreManager.StoreData()
+
 		time.Sleep(3 * time.Second)
 		crawler.Stop()
 
@@ -177,7 +191,10 @@ func TestCrawl(t *testing.T) {
 				NumOfGoroutines: 5,
 			},
 			printTarget: ioutil.Discard,
+			log:         logrus.New(),
 		}
+
+		crawler.log.Out = ioutil.Discard
 
 		crawler.Add(firstLink)
 		crawler.Add(firstLink)
@@ -188,7 +205,7 @@ func TestCrawl(t *testing.T) {
 
 		for i := 0; i < crawler.Configuration.NumOfGoroutines; i++ {
 			fmt.Fprintf(crawler.printTarget, "Starting routine no. %v\n", i+1)
-			go crawler.crawl(i, crawler.parser)
+			go crawler.crawl(i)
 		}
 
 		go crawler.StoreManager.StoreData()
@@ -234,7 +251,8 @@ func TestRun(t *testing.T) {
 			NumOfCrawls:     30,
 		}
 
-		c := New(testStoreManager, conf, cp, ioutil.Discard)
+		c := New(testStoreManager, conf, cp, ioutil.Discard, logrus.New())
+		c.log.Out = ioutil.Discard
 
 		go c.Run()
 		c.Add(firstLink)
@@ -282,7 +300,8 @@ func TestRun(t *testing.T) {
 			NumOfCrawls:     30,
 		}
 
-		c := New(testStoreManager, conf, cp, ioutil.Discard)
+		c := New(testStoreManager, conf, cp, ioutil.Discard, logrus.New())
+		c.log.Out = ioutil.Discard
 
 		go c.Run()
 		c.Add(firstLink)
